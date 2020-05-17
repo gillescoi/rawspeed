@@ -43,6 +43,10 @@ using std::vector;
 using std::fill_n;
 using std::make_pair;
 
+//#include <iostream>
+//using std::cout;
+//using std::endl;
+
 namespace rawspeed {
 
 class DngOpcodes::DngOpcode {
@@ -281,6 +285,145 @@ protected:
   void apply(const RawImage& ri) override {
     applyOP<uint16_t>(
         ri, [this](uint32_t x, uint32_t y, uint16_t v) { return lookup[v]; });
+  }
+};
+    
+// ****************************************************************************
+
+class DngOpcodes::GainMap final : public PixelOpcode {
+  // This opcode multiplies a specified area 
+  // and plane range of an image by a gain map.
+  uint32_t mapPointsV;
+  uint32_t mapPointsH;
+  double mapSpacingV;
+  double mapSpacingH;
+  double mapOriginV;
+  double mapOriginH;
+  uint32_t mapPlanes;
+  float * gainMap; 
+  uint32_t imageWidth;
+  uint32_t imageHeight;
+    
+public:
+  explicit GainMap(const RawImage& ri, ByteStream* bs) : PixelOpcode(ri, bs) {
+    imageWidth = ri->dim.x;
+    imageHeight = ri->dim.y;
+    mapPointsV = bs->getU32();
+    mapPointsH = bs->getU32();
+    mapSpacingV = bs->get<double>();
+    mapSpacingH = bs->get<double>();
+    mapOriginV = bs->get<double>();
+    mapOriginH = bs->get<double>();
+    mapPlanes = bs->getU32(); 
+      
+    //stock in memory the current gain map
+    //TODO: multiplane map
+    int mapSize = mapPointsV * mapPointsH;
+    
+    float adjust;
+    switch (getFirstPlane()){
+        case 0 : 
+            adjust = 1.25 ; //1.8 - 1.0
+            break;
+        case 1 : 
+            adjust = 1.16 ; //2.3 - 1.5
+            break;
+        case 2 : 
+            adjust = 1.1 ;//1.7
+            break;
+        default:
+            adjust = 1.0;
+            break;
+    }
+    float coef = adjust - 1;
+      
+    if (mapSize > 4){
+        gainMap = new float[mapSize];
+        for (auto i = 0U; i < mapSize; ++i){
+            //FIXME: why do we need to alter the gain map?
+            gainMap[i] = (bs->getFloat() + coef) / adjust;
+            //gainMap[i] = bs->getFloat() * adjust;
+            //gainMap[i] = bs->getFloat();
+        }
+    } else {
+        gainMap = NULL;
+        ThrowRDE("Too small gain map in opcode.");
+    }
+    
+    //iRectangle2D roi;
+    //roi = getRoi();
+    //cout << "Opcode Gain Map Correction : adjust = " << adjust << " for plane " << getFirstPlane() << endl;
+    //cout << "mapPoint(" << mapPointsH << "," << mapPointsV << ")" << endl;
+    //cout << "mapOrigin(" << mapOriginH << "," << mapOriginV << "," << (mapPointsH - 1) * mapSpacingH + mapOriginH << "," << (mapPointsV - 1) * mapSpacingV + mapOriginV <<")" << endl;
+    //cout << "roi(" << roi.getLeft() << "," << roi.getTop() << "," << roi.getRight() << "," << roi.getBottom() << ")" << endl; 
+    //cout << "img(" << ri->dim.x << "," << ri->dim.y << ")" << endl;
+    //cout << "mapBounds(" << (0 - mapOriginH) / mapSpacingH << "," << (0 - mapOriginV) / mapSpacingV << "," << (1.0 - mapOriginH) / mapSpacingH << "," << (1.0 - mapOriginV) / mapSpacingV<< ") " << endl;
+  }
+   
+  ~GainMap(void){
+    if (gainMap != NULL) delete[] gainMap;
+  }
+    
+  void setup(const RawImage& ri) override {
+    //FIXME: what kind of images could be supported here?
+    PixelOpcode::setup(ri);
+    if (ri->getDataType() != TYPE_USHORT16)
+      ThrowRDE("Only 16 bit images supported");
+  } 
+   
+  void apply(const RawImage& ri) override {
+    applyOP<uint16_t>(
+        ri, 
+        [this](uint32_t x, uint32_t y, uint16_t v) { 
+            double gain;
+            uint16_t value;
+            gain = getGain(((double) x) / (imageWidth - 1), ((double) y) / (imageHeight - 1));
+            //TODO: value should be clipped
+            value = (uint16_t) (v * gain);f
+            return value; 
+        }
+    );
+  }
+ 
+private:
+  double getGain(double x, double y){
+    // The gain map is not required to cover the entire image being modified. 
+    // Inside the gain map bounds, values are interpolated using bi-linear interpolation. 
+    // Outside the gain map bounds, values are replicated from the edges of the gain map.
+    
+    //TODO: multiplane map
+    double u;
+    double v;
+    int iu;
+    int iv;
+    double r1;
+    double r2;
+    double r;
+    double gain;
+    int quad;
+      
+    // Transform normalized coordinates 
+    // to gainMap discret coordinates
+    u = (x - mapOriginH) / mapSpacingH;
+    v = (y - mapOriginV) / mapSpacingV;
+    iu = (int) floor(u);
+    iv = (int) floor(v);    
+      
+    // Bi-linear interpolation
+    if (u >= 0 && u < mapPointsH && v >= 0 && v < mapPointsV){  
+        // (u,v) is inside the gain map bounds
+        quad = iv * mapPointsH + iu;
+        r = u - iu;
+        r1 = ((1 - r) * gainMap[quad]) + (r * gainMap[quad + 1]); 
+        r2 = ((1 - r) * gainMap[quad + mapPointsH]) + (r * gainMap[quad + mapPointsH + 1]);
+        r = v - iv;
+        gain = ((1 - r) * r1) + (r * r2);
+    } else {
+        //TODO: (u,v) is outside the gain map bounds.
+        //cout << "(" << u << "," << v << ") is outside the gain map bounds." << endl;
+        gain = 1.0;
+    }
+    return gain;
   }
 };
 
