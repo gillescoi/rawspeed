@@ -530,8 +530,8 @@ void DngDecoder::handleMetadata(const TiffIFD* raw) {
   setBlack(raw);
 
   // Apply opcodes to lossy DNG
-  if (compression == 0x884c && !uncorrectedRawValues &&
-      raw->hasEntry(OPCODELIST2)) {
+  if (raw->hasEntry(OPCODELIST2)) { 
+    cout << "DNG OPCODELIST2" << endl;
     // We must apply black/white scaling
     mRaw->scaleBlackWhite();
 
@@ -544,11 +544,12 @@ void DngDecoder::handleMetadata(const TiffIFD* raw) {
       // be usable
       mRaw->setError(e.what());
     }
-    mRaw->blackAreas.clear();
-    mRaw->blackLevel = 0;
-    mRaw->blackLevelSeparate[0] = mRaw->blackLevelSeparate[1] =
-        mRaw->blackLevelSeparate[2] = mRaw->blackLevelSeparate[3] = 0;
-    mRaw->whitePoint = 65535;
+    if (compression == 0x884c && !uncorrectedRawValues) {
+        mRaw->blackAreas.clear();
+        mRaw->blackLevel = 0;
+        mRaw->blackLevelSeparate[0] = mRaw->blackLevelSeparate[1] =
+            mRaw->blackLevelSeparate[2] = mRaw->blackLevelSeparate[3] = 0;
+        mRaw->whitePoint = 65535;
   }
 }
 
