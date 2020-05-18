@@ -220,12 +220,12 @@ public:
 // ****************************************************************************
 
 class DngOpcodes::PixelOpcode : public ROIOpcode {
+protected:
   uint32_t firstPlane;
   uint32_t planes;
   uint32_t rowPitch;
   uint32_t colPitch;
 
-protected:
   explicit PixelOpcode(const RawImage& ri, ByteStream* bs)
       : ROIOpcode(ri, bs, false) {
     firstPlane = bs->getU32();
@@ -265,6 +265,8 @@ protected:
       }
     }
   }
+  public:
+  uint32_t getFirstPlane() { return firstPlane; }
 };
 
 // ****************************************************************************
@@ -379,7 +381,7 @@ public:
             uint16_t value;
             gain = getGain(((double) x) / (imageWidth - 1), ((double) y) / (imageHeight - 1));
             //TODO: value should be clipped
-            value = (uint16_t) (v * gain);f
+            value = (uint16_t) (v * gain);
             return value; 
         }
     );
@@ -710,7 +712,8 @@ const std::map<uint32_t, std::pair<const char*, DngOpcodes::constructor_t>>
          make_pair("MapTable", &DngOpcodes::constructor<DngOpcodes::TableMap>)},
         {8U, make_pair("MapPolynomial",
                        &DngOpcodes::constructor<DngOpcodes::PolynomialMap>)},
-        {9U, make_pair("GainMap", nullptr)},
+        {9U, make_pair("GainMap", 
+                       &DngOpcodes::constructor<DngOpcodes::GainMap>)},
         {10U,
          make_pair(
              "DeltaPerRow",
