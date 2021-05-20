@@ -33,6 +33,7 @@ enum TiffTag {
   CANONSHOTINFO = 0x0004,
   CANONPOWERSHOTG9WB = 0x0029,
   PANASONIC_ISO_SPEED = 23,
+  PANASONIC_CFAPATTERN = 0x0009,
   NEWSUBFILETYPE                  = 0x00FE,
   SUBFILETYPE                     = 0x00FF,
   PANASONIC_BITSPERSAMPLE         = 0xa,
@@ -324,6 +325,8 @@ enum TiffTag {
   NOISEPROFILE = 0xC761,
   CANONCR2SLICE                   = 0xC640,   // CANON CR2
   CANON_SRAWTYPE                  = 0xC6C5, // IFD3
+  CANON_SRAWQUALITY               = 0x002E,
+  CANON_CAMERA_SETTINGS           = 0x0001, // MakerNote
   CANON_SENSOR_INFO               = 0x00E0, // MakerNote
   CANON_RAW_DATA_OFFSET           = 0x0081, // MakerNote TIF
 

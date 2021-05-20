@@ -11,14 +11,14 @@ If(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   message(FATAL_ERROR "In-source builds are not permitted. Make a separate folder for building:\nmkdir build; cd build; cmake ..\nBefore that, remove the files already created:\nrm -rf CMakeCache.txt CMakeFiles")
 endif(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 
-include(GNUInstallDirs)
-include(FeatureSummary)
-include(CheckCXXCompilerFlag)
-
 # NOTE: if rawspeed is being added as a submodule to another build,
 # this CMakeLists.txt should be added via add_subdirectory().
 
 project(rawspeed CXX)
+
+include(FeatureSummary)
+include(CheckCXXCompilerFlag)
+include(GNUInstallDirs)
 
 set(RAWSPEED_SOURCE_DIR "${PROJECT_SOURCE_DIR}" CACHE PATH "" FORCE)
 set(RAWSPEED_BINARY_DIR "${PROJECT_BINARY_DIR}" CACHE PATH "" FORCE)
@@ -222,6 +222,12 @@ if(BUILD_BENCHMARKING)
 endif()
 
 rawspeed_add_library(rawspeed STATIC)
+
+# If LTO is enabled, we must advertise that by adding proper LTO link flags
+# to the (only externally visible/usable) rawspeed library.
+separate_arguments(lto_link UNIX_COMMAND "${lto_link}")
+# FIXME: once cmake-3.13 is required, use target_link_options()
+target_link_libraries(rawspeed PUBLIC ${lto_link})
 
 include(src-dependencies)
 
