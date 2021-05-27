@@ -321,7 +321,7 @@ public:
     //TODO: multiplane map
     int mapSize = mapPointsV * mapPointsH;
     
-    float adjust;
+    /* float adjust;
     switch (getFirstPlane()){
         case 0 : 
             adjust = 1.25 ; //1.8 - 1.0
@@ -337,14 +337,15 @@ public:
             break;
     }
     float coef = adjust - 1;
+    */
       
     if (mapSize > 4){
         gainMap = new float[mapSize];
         for (auto i = 0U; i < mapSize; ++i){
             //FIXME: why do we need to alter the gain map?
-            gainMap[i] = (bs->getFloat() + coef) / adjust;
+            //gainMap[i] = (bs->getFloat() + coef) / adjust;
             //gainMap[i] = bs->getFloat() * adjust;
-            //gainMap[i] = bs->getFloat();
+            gainMap[i] = bs->getFloat();
         }
     } else {
         gainMap = NULL;
